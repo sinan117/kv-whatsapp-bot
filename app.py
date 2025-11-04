@@ -136,5 +136,8 @@ def reply_whatsapp():
     return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
 
