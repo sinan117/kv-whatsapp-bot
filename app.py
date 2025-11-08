@@ -85,7 +85,7 @@ def webhook():
         # ---- Start Menu ----
         elif "hi" in lower_msg or "hello" in lower_msg:
             reply = (
-                "👋 Hello! Welcome to *KV Idukki School*.\n\n"
+                " Hello! Welcome to *KV Idukki School*.\n\n"
                 "Please choose an option below:\n"
                 "1️⃣ Admission Info\n"
                 "2️⃣ Fee Details\n"
