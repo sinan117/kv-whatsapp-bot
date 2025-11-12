@@ -67,7 +67,7 @@ def reply_whatsapp():
         reply = "📚 Admissions for 2025 are open!\nPlease tell me which *class* you are seeking admission for?"
         user_context[sender] = {"step": "ask_class"}
 
-    # ---- Start Menu ----
+    # ---- Start Menu (with image added) ----
     elif "hi" in lower_msg or "hello" in lower_msg:
         reply = (
             "👋 Hello! Welcome to *KV Idukki School*.\n\n"
@@ -77,6 +77,9 @@ def reply_whatsapp():
             "3️⃣ Contact Info\n\n"
             "👉 Type the *number* or *word* (e.g., 1 or Admission)."
         )
+        msg.body(reply)
+        msg.media("https://share.google/kiNK2YVaNbLOJxZiY")  # ✅ Your image here
+        return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
     # ---- Step F1: Fee inquiry - Ask class ----
     elif "fee" in lower_msg or lower_msg == "2":
