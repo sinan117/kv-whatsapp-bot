@@ -24,7 +24,6 @@ def reply_whatsapp():
 
     # ---- Step 4: Admission - Ask phone number ----
     if sender in user_context and user_context[sender]["step"] == "ask_phone":
-        # ✅ Validate phone number (10 digits only)
         if not re.fullmatch(r"\d{10}", incoming_msg):
             reply = "⚠️ Please enter a valid *10-digit phone number* (digits only)."
         else:
@@ -44,7 +43,6 @@ def reply_whatsapp():
 
     # ---- Step 3: Admission - Ask name ----
     elif sender in user_context and user_context[sender]["step"] == "ask_name":
-        # ✅ Validate name (alphabets and spaces only)
         if not re.fullmatch(r"[A-Za-z ]+", incoming_msg):
             reply = "⚠️ Please enter your name using *alphabets only* (e.g., John Doe)."
         else:
@@ -54,7 +52,6 @@ def reply_whatsapp():
 
     # ---- Step 2: Admission - Ask class ----
     elif sender in user_context and user_context[sender]["step"] == "ask_class":
-        # ✅ Validate class (digits only, between 1–12)
         if not re.fullmatch(r"\d{1,2}", incoming_msg) or not (1 <= int(incoming_msg) <= 12):
             reply = "⚠️ Please enter your class as a number between *1 and 12* (e.g., 5)."
         else:
@@ -67,9 +64,9 @@ def reply_whatsapp():
         reply = "📚 Admissions for 2025 are open!\nPlease tell me which *class* you are seeking admission for?"
         user_context[sender] = {"step": "ask_class"}
 
-    # ---- Start Menu (with image added) ----
+    # ---- Start Menu ----
     elif "hi" in lower_msg or "hello" in lower_msg:
-        reply = (
+        msg.body(
             "👋 Hello! Welcome to *KV Idukki School*.\n\n"
             "Please choose an option below:\n"
             "1️⃣ Admission Info\n"
@@ -77,8 +74,7 @@ def reply_whatsapp():
             "3️⃣ Contact Info\n\n"
             "👉 Type the *number* or *word* (e.g., 1 or Admission)."
         )
-        msg.body(reply)
-        msg.media("https://share.google/kiNK2YVaNbLOJxZiY")  # ✅ Your image here
+        msg.media("https://share.google/kiNK2YVaNbLOJxZiY")  # ✅ Your welcome image
         return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
     # ---- Step F1: Fee inquiry - Ask class ----
@@ -106,7 +102,6 @@ def reply_whatsapp():
     elif sender in user_context and user_context[sender].get("step") == "ask_fee_category":
         cls = user_context[sender]["class"]
 
-        # Determine fee based on class range
         if 1 <= cls <= 3:
             fees = {"general": 500, "sc/st/obc": 300, "single girl child": 350}
         elif 4 <= cls <= 7:
@@ -149,6 +144,7 @@ def reply_whatsapp():
 
     msg.body(reply)
     return make_response(str(resp), 200, {"Content-Type": "application/xml"})
+
 
 if __name__ == "__main__":
     import os
