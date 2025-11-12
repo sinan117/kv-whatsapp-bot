@@ -132,9 +132,7 @@ def reply_whatsapp():
 
     # ---- Contact info ----
     elif lower_msg in ["3", "contact", "phone", "info"]:
-        reply = "📞Website -: https://painavu.kvs.ac.in\n
-E-mail Ids : kvidukki@yahoo.in\n
-Telephone:-04862-232205"
+        reply = "📞Website -: https://painavu.kvs.ac.in\nE-mail Ids : kvidukki@yahoo.in\nTelephone:-04862-232205"
 
     elif "bye" in lower_msg:
         reply = "Goodbye! 👋 Have a great day!"
