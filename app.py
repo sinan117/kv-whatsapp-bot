@@ -23,7 +23,6 @@ def reply_whatsapp():
 
     # default text
     reply = None
-    image_url = None
 
     # Step 4: Admission - Ask phone number
     if sender in user_context and user_context[sender]["step"] == "ask_phone":
@@ -76,7 +75,6 @@ def reply_whatsapp():
             "3️⃣ Contact Info\n\n"
             "👉 Type the *number* or *word* (e.g., 1 or Admission)."
         )
-        image_url = "https://share.google/kiNK2YVaNbLOJxZiY"
 
     # Fee inquiry - Step 1
     elif "fee" in lower_msg or lower_msg == "2":
@@ -141,11 +139,8 @@ def reply_whatsapp():
             "1️⃣ Admission  2️⃣ Fees  3️⃣ Contact"
         )
 
-    # ✅ Always create message AFTER text is set
     msg = resp.message()
     msg.body(reply)
-    if image_url:
-        msg.media(image_url)
 
     return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
