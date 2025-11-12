@@ -8,19 +8,22 @@ user_context = {}
 
 @app.route("/whatsapp", methods=["POST"])
 def reply_whatsapp():
-    incoming_msg = request.form.get("Body").strip()
+    incoming_msg = request.form.get("Body", "").strip()
     sender = request.form.get("From")
     print(f"📩 {sender}: {incoming_msg}")
 
-    resp = MessagingResponse()
-    msg = resp.message()
     lower_msg = incoming_msg.lower()
+    resp = MessagingResponse()
 
     def extract_class_number(text):
         matches = re.findall(r"\d+", text)
         if matches:
             return int(matches[0])
         return None
+
+    # Default reply
+    reply = None
+    image_url = None
 
     # ---- Step 4: Admission - Ask phone number ----
     if sender in user_context and user_context[sender]["step"] == "ask_phone":
@@ -66,7 +69,7 @@ def reply_whatsapp():
 
     # ---- Start Menu ----
     elif "hi" in lower_msg or "hello" in lower_msg:
-        msg.body(
+        reply = (
             "👋 Hello! Welcome to *KV Idukki School*.\n\n"
             "Please choose an option below:\n"
             "1️⃣ Admission Info\n"
@@ -74,8 +77,7 @@ def reply_whatsapp():
             "3️⃣ Contact Info\n\n"
             "👉 Type the *number* or *word* (e.g., 1 or Admission)."
         )
-        msg.media("https://share.google/kiNK2YVaNbLOJxZiY")  # ✅ Your welcome image
-        return make_response(str(resp), 200, {"Content-Type": "application/xml"})
+        image_url = "https://share.google/kiNK2YVaNbLOJxZiY"  # ✅ Your image link
 
     # ---- Step F1: Fee inquiry - Ask class ----
     elif "fee" in lower_msg or lower_msg == "2":
@@ -122,7 +124,7 @@ def reply_whatsapp():
             fee = fees["single girl child"]
         else:
             reply = "⚠️ Please type 1, 2, or 3 to select a valid category."
-            msg.body(reply)
+            msg = resp.message(reply)
             return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
         reply = f"🏫 Fee for *Class {cls}* ({category} category) is *₹{fee}* per term."
@@ -142,7 +144,11 @@ def reply_whatsapp():
             "1️⃣ Admission  2️⃣ Fees  3️⃣ Contact"
         )
 
-    msg.body(reply)
+    # ---- Send message ----
+    msg = resp.message(reply)
+    if image_url:
+        msg.media(image_url)
+
     return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
 
