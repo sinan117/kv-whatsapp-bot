@@ -144,7 +144,7 @@ def reply_whatsapp():
             reply = ai_response.choices[0].message.content
         except Exception as e:
             print("AI Error:", e)
-            reply = "❓ Sorry, I didn't understand that. Please choose 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact."
+            reply = "❓ Sorry, I didn't understand that. Please choose one of these:\n1️⃣ Admission 2️⃣ Fees 3️⃣ Contact."
 
     # ---- Send reply ----
     msg = resp.message()
