@@ -7,7 +7,7 @@ import re
 app = Flask(__name__)
 
 # Initialize OpenAI safely using environment variable
-client = OpenAI(api_key=os.getenv("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"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 user_context = {}
 
