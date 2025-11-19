@@ -3,7 +3,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 import re
 import mysql.connector
 
-app = Flask(**name**)
+app = Flask(__name__)
 
 # MySQL connection
 
