@@ -1,3 +1,4 @@
+```python
 from flask import Flask, request, make_response
 from twilio.twiml.messaging_response import MessagingResponse
 import re
@@ -8,15 +9,17 @@ from oauth2client.service_account import ServiceAccountCredentials
 scope = ["https://www.googleapis.com/auth/spreadsheets",
          "https://www.googleapis.com/auth/drive"]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(
-    "kv-idukki-bot-d3fc6b668abc.json", scope
-)
-
-client = gspread.authorize(creds)
-
-sheet = client.open_by_key(
-    "1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw"
-).sheet1
+try:
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "kv-idukki-bot-d3fc6b668abc.json", scope
+    )
+    client = gspread.authorize(creds)
+    sheet = client.open_by_key(
+        "1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw"
+    ).sheet1
+except Exception as e:
+    print("⚠️ Warning: Could not connect to Google Sheets:", e)
+    sheet = None
 # --- End Google Sheets setup ---
 
 app = Flask(__name__)
@@ -31,9 +34,7 @@ def reply_whatsapp():
 
     def extract_class_number(text):
         matches = re.findall(r"\d+", text)
-        if matches:
-            return int(matches[0])
-        return None
+        return int(matches[0]) if matches else None
 
     reply = None
     image_url = None
@@ -48,11 +49,12 @@ def reply_whatsapp():
             student_name = user_context[sender]["name"]
             student_phone = user_context[sender]["phone"]
             
-            # --- Save to Google Sheet (only Name, Class, Phone) ---
-            try:
-                sheet.append_row([student_name, student_class, student_phone])
-            except Exception as e:
-                print("Error saving to Google Sheet:", e)
+            # --- Save to Google Sheet safely ---
+            if sheet:
+                try:
+                    sheet.append_row([student_name, student_class, student_phone])
+                except Exception as e:
+                    print("⚠️ Error saving to Google Sheet:", e)
             # --- End Save ---
             
             reply = (
@@ -171,3 +173,4 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+```
