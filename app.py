@@ -1,22 +1,27 @@
+```python
 from flask import Flask, request, make_response
 from twilio.twiml.messaging_response import MessagingResponse
 import re
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-app = Flask(__name__)
-user_context = {}
+# --- Google Sheets setup ---
+scope = ["https://www.googleapis.com/auth/spreadsheets",
+         "https://www.googleapis.com/auth/drive"]
 
-# ---------------- GOOGLE SHEETS SETUP ---------------- #
-scope = ["https://www.googleapis.com/auth/spreadsheets"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(
     "kv-idukki-bot-d3fc6b668abc.json", scope
 )
+
 client = gspread.authorize(creds)
 
-# OPEN YOUR SHEET
-sheet = client.open_by_key("1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw").sheet1
-# ------------------------------------------------------ #
+sheet = client.open_by_key(
+    "1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw"
+).sheet1
+# --- End Google Sheets setup ---
+
+app = Flask(__name__)
+user_context = {}
 
 @app.route("/whatsapp", methods=["POST"])
 def reply_whatsapp():
@@ -32,7 +37,6 @@ def reply_whatsapp():
             return int(matches[0])
         return None
 
-    # default text
     reply = None
     image_url = None
 
@@ -45,11 +49,14 @@ def reply_whatsapp():
             student_class = user_context[sender]["class"]
             student_name = user_context[sender]["name"]
             student_phone = user_context[sender]["phone"]
-
-            # ---------------- SAVE TO GOOGLE SHEETS ---------------- #
-            sheet.append_row([student_name, student_class, student_phone])
-            # -------------------------------------------------------- #
-
+            
+            # --- Save to Google Sheet ---
+            try:
+                sheet.append_row([student_name, student_class, student_phone])
+            except Exception as e:
+                print("Error saving to Google Sheet:", e)
+            # --- End Save ---
+            
             reply = (
                 f"✅ Thank you, *{student_name}*! Your admission enquiry for *Class {student_class}* "
                 f"has been received.\n📱 Contact number: *{student_phone}*\n\n"
@@ -146,10 +153,8 @@ def reply_whatsapp():
     # Contact info
     elif lower_msg in ["3", "contact", "phone", "info"]:
         reply = "*🌐 Website* : https://painavu.kvs.ac.in\n*📧 Email* : kvidukki@yahoo.in\n*📞 Phone* : 04862-232205"
-
     elif "bye" in lower_msg:
         reply = "Goodbye! 👋 Have a great day!"
-
     else:
         reply = (
             "❓ Sorry, I didn’t understand that.\n"
@@ -164,8 +169,8 @@ def reply_whatsapp():
 
     return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
-
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+```
