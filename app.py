@@ -1,3 +1,4 @@
+```python
 from flask import Flask, request, make_response
 from twilio.twiml.messaging_response import MessagingResponse
 import re
@@ -26,7 +27,6 @@ user_context = {}
 def reply_whatsapp():
     incoming_msg = request.form.get("Body", "").strip()
     sender = request.form.get("From")
-    print(f"📩 {sender}: {incoming_msg}")
     resp = MessagingResponse()
     lower_msg = incoming_msg.lower()
 
@@ -49,7 +49,7 @@ def reply_whatsapp():
             student_name = user_context[sender]["name"]
             student_phone = user_context[sender]["phone"]
             
-            # --- Save to Google Sheet ---
+            # --- Save to Google Sheet (only Name, Class, Phone) ---
             try:
                 sheet.append_row([student_name, student_class, student_phone])
             except Exception as e:
@@ -172,3 +172,4 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+```
