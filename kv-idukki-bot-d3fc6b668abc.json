@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "kv-idukki-bot",
+  "private_key_id": "d3fc6b668abc47808a07337ecb8f6bcb403e0d8b",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDrO3wcFnSicH8M\nptKd/S49t+UEwabP7rDgUSU2cwVI4RJqIpjbX+zTu1XYf6H6QHBif1zkwGLU4qPj\nnxSVaM0DeSewudoHWMD6ikozptLZVIF3ibfKtrRRx+6rtiki+GHP05aZqSSXn62H\n0ZuoCKA0jimLbglC+1IQ8boknGkhnIngEP+JesLaHu3loNj7ZvuJyJl4AfMLT2r8\nm5j+MAxX/70g9fIv3vnrQ5Z/b7UsfIaK4zlp82HIRxI6npEutGYkNiQR5drR+8hF\nmmDcaPAjE2cr7uEbmV2XkP5D5vgn6m/WO5zImcLE6t7pxRHYSDMt3DwlpCW9O6e3\nYvj/nr2RAgMBAAECggEAAZJc/+SdzazEQI3IFdcWH3lgQnjE6nWKyl16uKNO5I2E\nuQQJqci5Z597EVMB2eE+s5AQ78tY22uk91V94hwc52yAWZF6nsjf/qWzr5QqT9pd\nKPLrTH77hfUUNZCT/STdN9+YKNTk9HKLE9HZrt394y9wIPtnfKb6vIDj1R5KkWUX\nRDnbhxM69WyjBfO19eJ+PbVdoioMxhi97UDGhRDP0d+Ec5LY272J0wxMJPaUUIhA\n9iU24yoHtrZ9YsVC2mngldjg0nlQANBWp0SOaIrCeTU6mww+luz3uwSiE4r048XL\nUZrNd7Sg7pWOx+NKNqfstwdEmHbI4AmT36EMWVnCNQKBgQD2nc8oTKOCO61ZUKvw\nxuAOf9brM4SsUMCEDpEuShsUp8IdHCKNUxPHqGU/BLYGcpWwlhZoeGFf2v2URMZU\n1JAErfel1tMckfwNp8MuBKqeosMcuYLEPg7rllOHT0Td3JL8pMUuKULuDrv2Rbrs\nfejbs+Rk9RyVIVVx5Lhtanij9QKBgQD0LsmzHT715/yv/HGAsV6+UY9ZOtcihaQf\nXot/57srnIAqT7DroN499zbsklWM643k3D9nLYq6u58qFR6MF5HZ3cjYGQt9mMP4\nkNCPd9SbuZJGEUvbig2Zyb1GFDRGl1wSz61NW2eUQiSBnODkWI8FkuhsAZm4LLlk\nk21RvmKNrQKBgBC9289PjJYNuRHkIRgCWDmDwjJLWAlengMY/hAXZck8LjhNrabM\naf5W1zC1ACpl4vWO6syCx5F7S1WiaZheqbw3lyVB9SjuXB8NMXnRRUfporczfMYX\ntGmX1enMns805yGRifU9RdblVys7xpnBXmpzxuB3p04UajmGHmMHJFN1AoGADNAz\nt1luh1rgEKAPmLA2B4iiHA2RYnde0GKWsWSIltZEh3PdFdBAOUIyuKFJKfbmYD8K\neLCUGg5kYMHw82r9NVCFDInr53BPwEhhGVYxauaG/XRE5cVNx2clrnq674VbyITr\nVCbavZXm8oI37uOSxbkaxygiV97I77UoxGRYKZUCgYEA6Ix8AlqHbZPEQXFgOXR9\n+NmM//ezD1hXKfPtE8CZnWiq+yRryLDKOCRqlNNghPo54RkyNeXCt3XrEjcvp803\nS3D/Y4HVJzPjBbZthPEKIgxtu1cIGtYWhjp8i/l1aibDIULrvXKL3JUBUJbTOCPA\nZa9nn8s5RCNSXE90brm3ZvA=\n-----END PRIVATE KEY-----\n",
+  "client_email": "kv-idukki-bot@kv-idukki-bot.iam.gserviceaccount.com",
+  "client_id": "118039831964226909941",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/kv-idukki-bot%40kv-idukki-bot.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
