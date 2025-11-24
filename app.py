@@ -52,7 +52,7 @@ def reply_whatsapp():
             )
 
             # --- NEW: Save to Google Sheet ---
-            sheet.append_row([student_class, student_name, student_phone])
+            sheet.append_row([student_name, student_class, student_phone])
 
             user_context.pop(sender)
 
