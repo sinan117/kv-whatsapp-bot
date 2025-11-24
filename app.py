@@ -8,7 +8,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 # --- NEW: Google Sheets Setup ---
 scope = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name("kv-idukki-bot-d3fc6b668abc.json", scope)
 client = gspread.authorize(creds)
 sheet = client.open("KV Admission Data").sheet1   # your sheet name
 
