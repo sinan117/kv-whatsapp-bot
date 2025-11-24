@@ -74,7 +74,7 @@ def reply_whatsapp():
             "3️⃣ Contact Info\n\n"
             "👉 Type the *number* or *word* (e.g., 1 or Admission)."
         )
-        image_url = "https://raw.githubusercontent.com/sinan117/kv-whatsapp-bot/main/welcome.jpg"
+        image_url = "https://raw.githubusercontent.com/sinan117/kv-gupshup-bot/main/welcome.jpg"
 
     # Fee inquiry - Step 1
     elif "fee" in lower_msg or lower_msg == "2":
