@@ -10,7 +10,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 scope = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("kv-idukki-bot-d3fc6b668abc.json", scope)
 client = gspread.authorize(creds)
-sheet = client.open("KV Admission Data").sheet1   # your sheet name
+sheet = client.open_by_key("1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw").sheet1   # your sheet name
 
 app = Flask(__name__)
 user_context = {}
