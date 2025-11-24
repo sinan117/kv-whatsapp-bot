@@ -2,6 +2,16 @@ from flask import Flask, request, make_response
 from twilio.twiml.messaging_response import MessagingResponse
 import re
 
+# --- NEW: Google Sheets Imports ---
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# --- NEW: Google Sheets Setup ---
+scope = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+client = gspread.authorize(creds)
+sheet = client.open("KV Admission Data").sheet1   # your sheet name
+
 app = Flask(__name__)
 user_context = {}
 
@@ -32,6 +42,7 @@ def reply_whatsapp():
             student_class = user_context[sender]["class"]
             student_name = user_context[sender]["name"]
             student_phone = user_context[sender]["phone"]
+
             reply = (
                 f"✅ Thank you, *{student_name}*! Your admission enquiry for *Class {student_class}* "
                 f"has been received.\n📱 Contact number: *{student_phone}*\n\n"
@@ -39,6 +50,10 @@ def reply_whatsapp():
                 "👉 https://kvidukki.ac.in/admission\n\n"
                 "Our school team will contact you soon. 📞"
             )
+
+            # --- NEW: Save to Google Sheet ---
+            sheet.append_row([student_class, student_name, student_phone])
+
             user_context.pop(sender)
 
     # Step 3: Ask name
@@ -126,8 +141,10 @@ def reply_whatsapp():
     # Contact info
     elif lower_msg in ["3", "contact", "phone", "info"]:
         reply = "*🌐 Website*: https://painavu.kvs.ac.in\n*📧 Email*: kvidukki@yahoo.in\n*📞 Phone*: 04862-232205"
+
     elif "bye" in lower_msg:
         reply = "Goodbye! 👋 Have a great day!"
+
     else:
         reply = "❓ Sorry, I didn’t understand that. Please choose 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact"
 
