@@ -15,93 +15,69 @@ sheet = client.open_by_key("1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw").sheet
 app = Flask(__name__)
 user_context = {}
 
-def _normalize_sender(s):
-    """Normalize sender strings by removing 'whatsapp:' prefix and trimming."""
-    if not s:
-        return ""
-    return s.replace("whatsapp:", "").strip()
 
-# ✅ FIXED count_entries() — uses normalized sender comparison and skips header
+# ---------- FIXED COUNT FUNCTION ----------
 def count_entries(sender):
-    sender_norm = _normalize_sender(sender)
     all_values = sheet.get_all_values()
     count = 0
-    for row in all_values[1:]:  # skip header row
-        if len(row) >= 4 and _normalize_sender(row[3]) == sender_norm:
+    for row in all_values[1:]:  # skip header
+        if len(row) >= 4 and row[3] == sender:
             count += 1
     return count
 
-def delete_entry_by_name(name, sender):
-    """Delete the first matching entry where (name matches) AND (sender matches).
-       Name matching is case-insensitive and strips whitespace.
-       Sender matching uses normalized comparison to tolerate 'whatsapp:' prefix.
-    """
-    name_norm = name.strip().lower()
-    sender_norm = _normalize_sender(sender)
-    all_values = sheet.get_all_values()
 
-    # iterate starting from 2 to avoid deleting header accidentally (row index is 1-based)
+# ---------- DELETE ENTRY FUNCTION ----------
+def delete_entry_by_name(name, sender):
+    all_values = sheet.get_all_values()
     for i, row in enumerate(all_values, start=1):
-        # skip header row
-        if i == 1:
-            continue
-        if len(row) >= 4:
-            row_name = row[0].strip().lower()
-            row_sender_norm = _normalize_sender(row[3])
-            if row_name == name_norm and row_sender_norm == sender_norm:
-                sheet.delete_row(i)
-                return True
+        if len(row) >= 4 and row[0].strip().lower() == name.strip().lower() and row[3] == sender:
+            sheet.delete_row(i)
+            return True
     return False
+
 
 @app.route("/whatsapp", methods=["POST"])
 def reply_whatsapp():
     incoming_msg = request.form.get("Body", "").strip()
     sender = request.form.get("From")
     print(f"📩 {sender}: {incoming_msg}")
-    
+
     resp = MessagingResponse()
     lower_msg = incoming_msg.lower()
-
-    def extract_class_number(text):
-        matches = re.findall(r"\d+", text)
-        if matches:
-            return int(matches[0])
-        return None
 
     reply = None
     image_url = None
 
-    # --- DELETE ENTRY ---
-    # Accept variants like "delete name", "delete: name", "del name"
-    if lower_msg.startswith("delete ") or lower_msg.startswith("delete:") or lower_msg.startswith("del "):
-        # Extract name robustly
-        if lower_msg.startswith("delete:"):
-            name_to_delete = incoming_msg.split(":", 1)[1].strip()
-        else:
-            # split on first space to preserve names with spaces
-            parts = incoming_msg.split(" ", 1)
-            name_to_delete = parts[1].strip() if len(parts) > 1 else ""
-        if not name_to_delete:
-            reply = "❌ Please provide the name to delete. Usage:\n👉 delete <name>"
-            msg = resp.message(reply)
-            return make_response(str(resp), 200, {"Content-Type": "application/xml"})
+    # ---------- FIXED DELETE LOGIC ----------
+    if lower_msg.startswith("delete") or lower_msg.startswith("del ") or lower_msg.startswith("remove"):
+        parts = incoming_msg.split(" ", 1)
 
-        deleted = delete_entry_by_name(name_to_delete, sender)
-        if deleted:
-            reply = f"✅ Entry for *{name_to_delete}* deleted successfully."
+        if len(parts) < 2 or parts[1].strip() == "":
+            reply = "❌ Please provide the name to delete.\n👉 delete <name>"
         else:
-            reply = f"❌ No entry found for *{name_to_delete}* under your number."
-        # respond immediately for delete command
+            name_to_delete = parts[1].strip()
+            if delete_entry_by_name(name_to_delete, sender):
+                reply = f"✅ Entry for *{name_to_delete}* deleted successfully."
+            else:
+                reply = f"❌ No entry found for *{name_to_delete}* under your number."
+
         msg = resp.message()
         msg.body(reply)
         return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
-    # Step 4: Admission - Ask phone number
-    elif sender in user_context and user_context[sender]["step"] == "ask_phone":
+
+    # ---------- HELPERS ----------
+    def extract_class_number(text):
+        matches = re.findall(r"\d+", text)
+        return int(matches[0]) if matches else None
+
+
+    # ---------- ADMISSION PHONE STEP ----------
+    if sender in user_context and user_context[sender]["step"] == "ask_phone":
         if not re.fullmatch(r"\d{10}", incoming_msg):
             reply = "⚠️ Please enter a valid *10-digit phone number* (digits only)."
         else:
-            # Limit check BEFORE saving
+            # LIMIT CHECK FIXED
             if count_entries(sender) >= 2:
                 reply = "⚠️ You already submitted *2 entries*. Please delete one using:\n\n👉 delete <name>"
             else:
@@ -118,12 +94,11 @@ def reply_whatsapp():
                     "Our school team will contact you soon. 📞"
                 )
 
-                # SAVE to sheet: name, class, phone, sender
                 sheet.append_row([student_name, student_class, student_phone, sender])
-
                 user_context.pop(sender)
 
-    # Step 3: Ask name
+
+    # ---------- ADMISSION NAME STEP ----------
     elif sender in user_context and user_context[sender]["step"] == "ask_name":
         if not re.fullmatch(r"[A-Za-z ]+", incoming_msg):
             reply = "⚠️ Please enter your name using *alphabets only* (e.g., John Doe)."
@@ -132,7 +107,8 @@ def reply_whatsapp():
             user_context[sender]["step"] = "ask_phone"
             reply = "📞 Please provide your *contact number* (10 digits)."
 
-    # Step 2: Ask class
+
+    # ---------- ADMISSION CLASS STEP ----------
     elif sender in user_context and user_context[sender]["step"] == "ask_class":
         if not re.fullmatch(r"\d{1,2}", incoming_msg) or not (1 <= int(incoming_msg) <= 12):
             reply = "⚠️ Please enter your class as a number between *1 and 12* (e.g., 5)."
@@ -141,19 +117,14 @@ def reply_whatsapp():
             user_context[sender]["step"] = "ask_name"
             reply = "👤 Great! Please tell me the *student's full name*."
 
-    # Step 1: Admission start (WITH LIMIT CHECK)
+
+    # ---------- ADMISSION START ----------
     elif "admission" in lower_msg or lower_msg == "1":
-
-        # LIMIT CHECK BEFORE STARTING ADMISSION
-        if count_entries(sender) >= 2:
-            reply = "⚠️ You already submitted *2 entries*. Please delete one using:\n\n👉 delete <name>"
-            msg = resp.message(reply)
-            return make_response(str(resp), 200, {"Content-Type": "application/xml"})
-
         reply = "📚 Admissions for 2025 are open!\nPlease tell me which *class* you are seeking admission for?"
         user_context[sender] = {"step": "ask_class"}
 
-    # START MENU (hi/hello)
+
+    # ---------- START MENU ----------
     elif "hi" in lower_msg or "hello" in lower_msg:
         reply = (
             "👋 Hello! Welcome to *KV Idukki School*.\n\n"
@@ -165,12 +136,14 @@ def reply_whatsapp():
         )
         image_url = "https://raw.githubusercontent.com/sinan117/kv-gupshup-bot/main/welcome.jpg"
 
-    # Fee inquiry - Step 1
+
+    # ---------- FEES STEP 1 ----------
     elif "fee" in lower_msg or lower_msg == "2":
         reply = "💰 Please enter the *class number* (e.g., 1, 5, 10) to get the fee details."
         user_context[sender] = {"step": "ask_fee_class"}
 
-    # Fee inquiry - Step 2
+
+    # ---------- FEES STEP 2 ----------
     elif sender in user_context and user_context[sender].get("step") == "ask_fee_class":
         cls = extract_class_number(incoming_msg)
         if cls and 1 <= cls <= 12:
@@ -184,17 +157,17 @@ def reply_whatsapp():
         else:
             reply = "⚠️ Please enter a valid class number between 1 and 12."
 
-    # Fee inquiry - Step 3
+
+    # ---------- FEES STEP 3 ----------
     elif sender in user_context and user_context[sender].get("step") == "ask_fee_category":
         cls = user_context[sender]["class"]
+
         if 1 <= cls <= 3:
             fees = {"general": 500, "sc/st/obc": 300, "single girl child": 350}
         elif 4 <= cls <= 7:
             fees = {"general": 800, "sc/st/obc": 600, "single girl child": 650}
         elif 8 <= cls <= 12:
             fees = {"general": 1100, "sc/st/obc": 800, "single girl child": 950}
-        else:
-            fees = None
 
         if "1" in lower_msg or "general" in lower_msg:
             category = "General"
@@ -212,22 +185,30 @@ def reply_whatsapp():
         reply = f"🏫 Fee for *Class {cls}* ({category} category) is *₹{fee}* per term."
         user_context.pop(sender)
 
-    # Contact info
+
+    # ---------- CONTACT INFO ----------
     elif lower_msg in ["3", "contact", "phone", "info"]:
         reply = "*🌐 Website*: https://painavu.kvs.ac.in\n*📧 Email*: kvidukki@yahoo.in\n*📞 Phone*: 04862-232205"
 
+
+    # ---------- GOODBYE ----------
     elif "bye" in lower_msg:
         reply = "Goodbye! 👋 Have a great day!"
 
+
+    # ---------- FALLBACK ----------
     else:
         reply = "❓ Sorry, I didn’t understand that. Please choose 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact"
 
+
+    # ---------- SEND RESPONSE ----------
     msg = resp.message()
     msg.body(reply)
     if image_url:
         msg.media(image_url)
 
     return make_response(str(resp), 200, {"Content-Type": "application/xml"})
+
 
 if __name__ == "__main__":
     import os
