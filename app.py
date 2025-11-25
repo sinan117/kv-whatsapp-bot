@@ -18,7 +18,7 @@ user_context = {}
 def count_entries(sender):
     """Count how many entries a WhatsApp sender already has in the sheet."""
     records = sheet.get_all_records()
-    return sum(1 for row in records if row.get("whtsp sender") == sender)
+    return sum(1 for row in records if row.get("whatsapp sender") == sender)
 
 def delete_entry_by_name(name, sender):
     """Delete entries from sheet where name AND sender match."""
