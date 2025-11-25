@@ -2,18 +2,32 @@ from flask import Flask, request, make_response
 from twilio.twiml.messaging_response import MessagingResponse
 import re
 
-# --- NEW: Google Sheets Imports ---
+# --- Google Sheets Imports ---
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- NEW: Google Sheets Setup ---
+# --- Google Sheets Setup ---
 scope = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("kv-idukki-bot-d3fc6b668abc.json", scope)
 client = gspread.authorize(creds)
-sheet = client.open_by_key("1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw").sheet1   # your sheet name
+sheet = client.open_by_key("1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw").sheet1
 
 app = Flask(__name__)
 user_context = {}
+
+def count_entries(sender):
+    """Count how many entries a WhatsApp sender already has in the sheet."""
+    records = sheet.get_all_records()
+    return sum(1 for row in records if row.get("whtsp sender") == sender)
+
+def delete_entry_by_name(name, sender):
+    """Delete entries from sheet where name AND sender match."""
+    all_values = sheet.get_all_values()
+    for i, row in enumerate(all_values, start=1):
+        if len(row) >= 4 and row[0].strip().lower() == name.strip().lower() and row[3] == sender:
+            sheet.delete_row(i)
+            return True
+    return False
 
 @app.route("/whatsapp", methods=["POST"])
 def reply_whatsapp():
@@ -33,28 +47,40 @@ def reply_whatsapp():
     reply = None
     image_url = None
 
+    # --- DELETE ENTRY ---
+    if lower_msg.startswith("delete "):
+        name_to_delete = incoming_msg[7:].strip()
+        if delete_entry_by_name(name_to_delete, sender):
+            reply = f"✅ Entry for *{name_to_delete}* deleted successfully."
+        else:
+            reply = f"❌ No entry found for *{name_to_delete}* under your number."
+    
     # Step 4: Admission - Ask phone number
-    if sender in user_context and user_context[sender]["step"] == "ask_phone":
+    elif sender in user_context and user_context[sender]["step"] == "ask_phone":
         if not re.fullmatch(r"\d{10}", incoming_msg):
             reply = "⚠️ Please enter a valid *10-digit phone number* (digits only)."
         else:
-            user_context[sender]["phone"] = incoming_msg
-            student_class = user_context[sender]["class"]
-            student_name = user_context[sender]["name"]
-            student_phone = user_context[sender]["phone"]
+            # Limit check BEFORE saving
+            if count_entries(sender) >= 2:
+                reply = "⚠️ You already submitted *2 entries*. Please delete one using:\n\n👉 delete <name>"
+            else:
+                user_context[sender]["phone"] = incoming_msg
+                student_class = user_context[sender]["class"]
+                student_name = user_context[sender]["name"]
+                student_phone = user_context[sender]["phone"]
 
-            reply = (
-                f"✅ Thank you, *{student_name}*! Your admission enquiry for *Class {student_class}* "
-                f"has been received.\n📱 Contact number: *{student_phone}*\n\n"
-                "📝 Please complete the admission form online:\n"
-                "👉 https://kvidukki.ac.in/admission\n\n"
-                "Our school team will contact you soon. 📞"
-            )
+                reply = (
+                    f"✅ Thank you, *{student_name}*! Your admission enquiry for *Class {student_class}* "
+                    f"has been received.\n📱 Contact number: *{student_phone}*\n\n"
+                    "📝 Please complete the admission form online:\n"
+                    "👉 https://kvidukki.ac.in/admission\n\n"
+                    "Our school team will contact you soon. 📞"
+                )
 
-            # --- NEW: Save to Google Sheet ---
-            sheet.append_row([student_name, student_class, student_phone])
+                # SAVE to sheet: name, class, phone, sender
+                sheet.append_row([student_name, student_class, student_phone, sender])
 
-            user_context.pop(sender)
+                user_context.pop(sender)
 
     # Step 3: Ask name
     elif sender in user_context and user_context[sender]["step"] == "ask_name":
