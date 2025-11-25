@@ -54,7 +54,7 @@ def reply_whatsapp():
             reply = f"✅ Entry for *{name_to_delete}* deleted successfully."
         else:
             reply = f"❌ No entry found for *{name_to_delete}* under your number."
-    
+
     # Step 4: Admission - Ask phone number
     elif sender in user_context and user_context[sender]["step"] == "ask_phone":
         if not re.fullmatch(r"\d{10}", incoming_msg):
@@ -100,8 +100,15 @@ def reply_whatsapp():
             user_context[sender]["step"] = "ask_name"
             reply = "👤 Great! Please tell me the *student's full name*."
 
-    # Step 1: Admission start
+    # Step 1: Admission start (WITH LIMIT CHECK FIX)
     elif "admission" in lower_msg or lower_msg == "1":
+
+        # 🔥 LIMIT CHECK BEFORE STARTING ADMISSION
+        if count_entries(sender) >= 2:
+            reply = "⚠️ You already submitted *2 entries*. Please delete one using:\n\n👉 delete <name>"
+            msg = resp.message(reply)
+            return make_response(str(resp), 200, {"Content-Type": "application/xml"})
+
         reply = "📚 Admissions for 2025 are open!\nPlease tell me which *class* you are seeking admission for?"
         user_context[sender] = {"step": "ask_class"}
 
@@ -172,7 +179,7 @@ def reply_whatsapp():
         reply = "Goodbye! 👋 Have a great day!"
 
     else:
-        reply = "❓ Sorry, I didn’t understand that. Please choose 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact"
+        reply = "❓ Sorry, I didn’t understand that. Please choose any of these:\n 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact"
 
     msg = resp.message()
     msg.body(reply)
