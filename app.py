@@ -15,18 +15,42 @@ sheet = client.open_by_key("1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw").sheet
 app = Flask(__name__)
 user_context = {}
 
+def _normalize_sender(s):
+    """Normalize sender strings by removing 'whatsapp:' prefix and trimming."""
+    if not s:
+        return ""
+    return s.replace("whatsapp:", "").strip()
+
+# ✅ FIXED count_entries() — uses normalized sender comparison and skips header
 def count_entries(sender):
-    """Count how many entries a WhatsApp sender already has in the sheet."""
-    records = sheet.get_all_records()
-    return sum(1 for row in records if row.get("whatsapp sender") == sender)
+    sender_norm = _normalize_sender(sender)
+    all_values = sheet.get_all_values()
+    count = 0
+    for row in all_values[1:]:  # skip header row
+        if len(row) >= 4 and _normalize_sender(row[3]) == sender_norm:
+            count += 1
+    return count
 
 def delete_entry_by_name(name, sender):
-    """Delete entries from sheet where name AND sender match."""
+    """Delete the first matching entry where (name matches) AND (sender matches).
+       Name matching is case-insensitive and strips whitespace.
+       Sender matching uses normalized comparison to tolerate 'whatsapp:' prefix.
+    """
+    name_norm = name.strip().lower()
+    sender_norm = _normalize_sender(sender)
     all_values = sheet.get_all_values()
+
+    # iterate starting from 2 to avoid deleting header accidentally (row index is 1-based)
     for i, row in enumerate(all_values, start=1):
-        if len(row) >= 4 and row[0].strip().lower() == name.strip().lower() and row[3] == sender:
-            sheet.delete_row(i)
-            return True
+        # skip header row
+        if i == 1:
+            continue
+        if len(row) >= 4:
+            row_name = row[0].strip().lower()
+            row_sender_norm = _normalize_sender(row[3])
+            if row_name == name_norm and row_sender_norm == sender_norm:
+                sheet.delete_row(i)
+                return True
     return False
 
 @app.route("/whatsapp", methods=["POST"])
@@ -48,12 +72,29 @@ def reply_whatsapp():
     image_url = None
 
     # --- DELETE ENTRY ---
-    if lower_msg.startswith("delete "):
-        name_to_delete = incoming_msg[7:].strip()
-        if delete_entry_by_name(name_to_delete, sender):
+    # Accept variants like "delete name", "delete: name", "del name"
+    if lower_msg.startswith("delete ") or lower_msg.startswith("delete:") or lower_msg.startswith("del "):
+        # Extract name robustly
+        if lower_msg.startswith("delete:"):
+            name_to_delete = incoming_msg.split(":", 1)[1].strip()
+        else:
+            # split on first space to preserve names with spaces
+            parts = incoming_msg.split(" ", 1)
+            name_to_delete = parts[1].strip() if len(parts) > 1 else ""
+        if not name_to_delete:
+            reply = "❌ Please provide the name to delete. Usage:\n👉 delete <name>"
+            msg = resp.message(reply)
+            return make_response(str(resp), 200, {"Content-Type": "application/xml"})
+
+        deleted = delete_entry_by_name(name_to_delete, sender)
+        if deleted:
             reply = f"✅ Entry for *{name_to_delete}* deleted successfully."
         else:
             reply = f"❌ No entry found for *{name_to_delete}* under your number."
+        # respond immediately for delete command
+        msg = resp.message()
+        msg.body(reply)
+        return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
     # Step 4: Admission - Ask phone number
     elif sender in user_context and user_context[sender]["step"] == "ask_phone":
@@ -100,10 +141,10 @@ def reply_whatsapp():
             user_context[sender]["step"] = "ask_name"
             reply = "👤 Great! Please tell me the *student's full name*."
 
-    # Step 1: Admission start (WITH LIMIT CHECK FIX)
+    # Step 1: Admission start (WITH LIMIT CHECK)
     elif "admission" in lower_msg or lower_msg == "1":
 
-        # 🔥 LIMIT CHECK BEFORE STARTING ADMISSION
+        # LIMIT CHECK BEFORE STARTING ADMISSION
         if count_entries(sender) >= 2:
             reply = "⚠️ You already submitted *2 entries*. Please delete one using:\n\n👉 delete <name>"
             msg = resp.message(reply)
@@ -179,7 +220,7 @@ def reply_whatsapp():
         reply = "Goodbye! 👋 Have a great day!"
 
     else:
-        reply = "❓ Sorry, I didn’t understand that. Please choose any of these:\n 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact"
+        reply = "❓ Sorry, I didn’t understand that. Please choose 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact"
 
     msg = resp.message()
     msg.body(reply)
