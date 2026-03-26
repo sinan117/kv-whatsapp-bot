@@ -5,14 +5,10 @@ import re
 # --- Google Sheets Imports ---
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import os, json
 
-# --- Google Sheets Setup (FIXED) ---
+# --- Google Sheets Setup ---
 scope = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
-
-creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-
+creds = ServiceAccountCredentials.from_json_keyfile_name("kv-idukki-bot-d3fc6b668abc.json", scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_key("1fKXE4T9L_Qv2_U_TuFkWi-90LlyttQu0jz72oiL7DRw").sheet1
 
@@ -40,6 +36,7 @@ def delete_entry_by_name(name, sender):
     all_values = sheet.get_all_values()
     headers = [h.strip().lower() for h in all_values[0]]
 
+    # find column indexes
     try:
         name_col = headers.index("name")
     except:
@@ -51,11 +48,15 @@ def delete_entry_by_name(name, sender):
         try:
             sender_col = headers.index("sender")
         except:
-            sender_col = 3
+            sender_col = 3  # fallback
+
+    print(f"DEBUG delete: name_col={name_col}, sender_col={sender_col}")
 
     name_norm = name.strip().lower()
     sender_norm = sender.split(":")[-1].strip()
+    print(f"DEBUG name_norm='{name_norm}', sender_norm='{sender_norm}'")
 
+    # Loop rows starting at row 2
     for i, row in enumerate(all_values[1:], start=2):
         if len(row) <= max(name_col, sender_col):
             continue
@@ -64,10 +65,14 @@ def delete_entry_by_name(name, sender):
         row_sender = row[sender_col].strip()
         row_sender_norm = row_sender.split(":")[-1].strip()
 
+        print(f"DEBUG checking row {i}: row_name='{row_name}', row_sender='{row_sender_norm}'")
+
         if row_name == name_norm and row_sender_norm == sender_norm:
+            print(f"DEBUG MATCH found → deleting row {i}")
             sheet.delete_rows(i)
             return True
 
+    print("DEBUG No match found for delete")
     return False
 
 
@@ -75,6 +80,10 @@ def delete_entry_by_name(name, sender):
 def reply_whatsapp():
     incoming_msg = request.form.get("Body", "").strip()
     sender = request.form.get("From")
+
+    print(f"📩 {sender}: {incoming_msg}")  # ✅ ADDED
+
+    print(f"📩 {sender}: {incoming_msg}")
 
     resp = MessagingResponse()
     lower_msg = incoming_msg.lower()
@@ -99,15 +108,21 @@ def reply_whatsapp():
         msg.body(reply)
         return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
+
+
+    # ---------- HELPER ----------
     def extract_class_number(text):
         matches = re.findall(r"\d+", text)
         return int(matches[0]) if matches else None
+
+
 
     # ---------- ADMISSION PHONE STEP ----------
     if sender in user_context and user_context[sender]["step"] == "ask_phone":
         if not re.fullmatch(r"\d{10}", incoming_msg):
             reply = "⚠️ Please enter a valid *10-digit phone number* (digits only)."
         else:
+            # LIMIT CHECK
             if count_entries(sender) >= 2:
                 reply = "⚠️ You already submitted *2 entries*. Please delete one using:\n\n👉 delete <name>"
             else:
@@ -127,6 +142,8 @@ def reply_whatsapp():
                 sheet.append_row([student_name, student_class, student_phone, sender])
                 user_context.pop(sender)
 
+
+
     # ---------- ADMISSION NAME STEP ----------
     elif sender in user_context and user_context[sender]["step"] == "ask_name":
         if not re.fullmatch(r"[A-Za-z ]+", incoming_msg):
@@ -135,6 +152,8 @@ def reply_whatsapp():
             user_context[sender]["name"] = incoming_msg
             user_context[sender]["step"] = "ask_phone"
             reply = "📞 Please provide your *contact number* (10 digits)."
+
+
 
     # ---------- ADMISSION CLASS STEP ----------
     elif sender in user_context and user_context[sender]["step"] == "ask_class":
@@ -145,13 +164,17 @@ def reply_whatsapp():
             user_context[sender]["step"] = "ask_name"
             reply = "👤 Great! Please tell me the *student's full name*."
 
+
+
     # ---------- ADMISSION START ----------
     elif "admission" in lower_msg or lower_msg == "1":
         reply = "📚 Admissions for 2025 are open!\nPlease tell me which *class* you are seeking admission for?"
         user_context[sender] = {"step": "ask_class"}
 
+
+
     # ---------- START MENU ----------
-    elif "hi" in lower_msg or "hello" in lower_msg:
+    elif lower_msg.strip() in ["hi", "hello"]:  # ✅ FIXED
         reply = (
             "👋 Hello! Welcome to *KV Idukki School*.\n\n"
             "Please choose an option below:\n"
@@ -162,10 +185,14 @@ def reply_whatsapp():
         )
         image_url = "https://raw.githubusercontent.com/sinan117/kv-gupshup-bot/main/welcome.jpg"
 
+
+
     # ---------- FEES STEP 1 ----------
     elif "fee" in lower_msg or lower_msg == "2":
         reply = "💰 Please enter the *class number* (e.g., 1, 5, 10) to get the fee details."
         user_context[sender] = {"step": "ask_fee_class"}
+
+
 
     # ---------- FEES STEP 2 ----------
     elif sender in user_context and user_context[sender].get("step") == "ask_fee_class":
@@ -180,6 +207,8 @@ def reply_whatsapp():
             )
         else:
             reply = "⚠️ Please enter a valid class number between 1 and 12."
+
+
 
     # ---------- FEES STEP 3 ----------
     elif sender in user_context and user_context[sender].get("step") == "ask_fee_category":
@@ -208,18 +237,27 @@ def reply_whatsapp():
         reply = f"🏫 Fee for *Class {cls}* ({category} category) is *₹{fee}* per term."
         user_context.pop(sender)
 
+
+
     # ---------- CONTACT INFO ----------
     elif lower_msg in ["3", "contact", "phone", "info"]:
         reply = "*🌐 Website*: https://painavu.kvs.ac.in\n*📧 Email*: kvidukki@yahoo.in\n*📞 Phone*: 04862-232205"
+
+
 
     # ---------- GOODBYE ----------
     elif "bye" in lower_msg:
         reply = "Goodbye! 👋 Have a great day!"
 
+
+
     # ---------- FALLBACK ----------
     else:
         reply = "❓ Sorry, I didn’t understand that. Please choose 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact"
 
+
+
+    # ---------- SEND RESPONSE ----------
     msg = resp.message()
     msg.body(reply)
     if image_url:
@@ -229,5 +267,6 @@ def reply_whatsapp():
 
 
 if __name__ == "__main__":
+    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
