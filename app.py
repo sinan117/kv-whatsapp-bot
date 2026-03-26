@@ -7,6 +7,10 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import os, json
 
+# 🔥 ADDED (for log flush)
+import sys
+sys.stdout.flush()
+
 # --- Google Sheets Setup (FIXED) ---
 scope = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
 
@@ -25,7 +29,7 @@ def count_entries(sender):
     all_values = sheet.get_all_values()
     count = 0
     sender_norm = sender.split(":")[-1].strip()
-    for row in all_values[1:]:
+    for row in all_values[1:]:  # skip header
         if len(row) >= 4:
             row_sender_norm = row[3].split(":")[-1].strip()
             if row_sender_norm == sender_norm:
@@ -35,7 +39,7 @@ def count_entries(sender):
 
 # ---------- FIXED DELETE FUNCTION ----------
 def delete_entry_by_name(name, sender):
-    print(f"DEBUG received delete request: raw='{name}', sender='{sender}'")
+    print(f"DEBUG received delete request: raw='{name}', sender='{sender}'", flush=True)
 
     all_values = sheet.get_all_values()
     headers = [h.strip().lower() for h in all_values[0]]
@@ -73,12 +77,13 @@ def delete_entry_by_name(name, sender):
 
 @app.route("/whatsapp", methods=["POST"])
 def reply_whatsapp():
-    print("🔥 FUNCTION HIT")  # ✅ ADDED
+    print("🔥 FUNCTION HIT", flush=True)  # 🔥 ADDED
+    print("📦 RAW DATA:", request.form, flush=True)  # 🔥 ADDED
 
     incoming_msg = request.form.get("Body", "").strip()
     sender = request.form.get("From")
 
-    print(f"📩 {sender}: {incoming_msg}")
+    print(f"📩 Sender: {sender} | Message: {incoming_msg}", flush=True)  # 🔥 UPDATED
 
     resp = MessagingResponse()
     lower_msg = incoming_msg.lower()
@@ -101,14 +106,14 @@ def reply_whatsapp():
 
         msg = resp.message()
         msg.body(reply)
+        print(f"📤 Replying with: {reply}", flush=True)  # 🔥 ADDED
         return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
     def extract_class_number(text):
         matches = re.findall(r"\d+", text)
         return int(matches[0]) if matches else None
 
-    # ---------- (ALL YOUR LOGIC SAME — NOT CHANGED) ----------
-
+    # ---------- ADMISSION PHONE STEP ----------
     if sender in user_context and user_context[sender]["step"] == "ask_phone":
         if not re.fullmatch(r"\d{10}", incoming_msg):
             reply = "⚠️ Please enter a valid *10-digit phone number* (digits only)."
@@ -132,6 +137,7 @@ def reply_whatsapp():
                 sheet.append_row([student_name, student_class, student_phone, sender])
                 user_context.pop(sender)
 
+    # ---------- ADMISSION NAME STEP ----------
     elif sender in user_context and user_context[sender]["step"] == "ask_name":
         if not re.fullmatch(r"[A-Za-z ]+", incoming_msg):
             reply = "⚠️ Please enter your name using *alphabets only* (e.g., John Doe)."
@@ -140,6 +146,7 @@ def reply_whatsapp():
             user_context[sender]["step"] = "ask_phone"
             reply = "📞 Please provide your *contact number* (10 digits)."
 
+    # ---------- ADMISSION CLASS STEP ----------
     elif sender in user_context and user_context[sender]["step"] == "ask_class":
         if not re.fullmatch(r"\d{1,2}", incoming_msg) or not (1 <= int(incoming_msg) <= 12):
             reply = "⚠️ Please enter your class as a number between *1 and 12* (e.g., 5)."
@@ -148,10 +155,12 @@ def reply_whatsapp():
             user_context[sender]["step"] = "ask_name"
             reply = "👤 Great! Please tell me the *student's full name*."
 
+    # ---------- ADMISSION START ----------
     elif "admission" in lower_msg or lower_msg == "1":
         reply = "📚 Admissions for 2025 are open!\nPlease tell me which *class* you are seeking admission for?"
         user_context[sender] = {"step": "ask_class"}
 
+    # ---------- START MENU ----------
     elif lower_msg.strip() in ["hi", "hello"]:
         reply = (
             "👋 Hello! Welcome to *KV Idukki School*.\n\n"
@@ -163,20 +172,64 @@ def reply_whatsapp():
         )
         image_url = "https://raw.githubusercontent.com/sinan117/kv-gupshup-bot/main/welcome.jpg"
 
+    # ---------- FEES STEP 1 ----------
     elif "fee" in lower_msg or lower_msg == "2":
         reply = "💰 Please enter the *class number* (e.g., 1, 5, 10) to get the fee details."
         user_context[sender] = {"step": "ask_fee_class"}
 
+    # ---------- FEES STEP 2 ----------
+    elif sender in user_context and user_context[sender].get("step") == "ask_fee_class":
+        cls = extract_class_number(incoming_msg)
+        if cls and 1 <= cls <= 12:
+            user_context[sender]["class"] = cls
+            user_context[sender]["step"] = "ask_fee_category"
+            reply = (
+                "👩‍🎓 Please specify the *category*:\n"
+                "1️⃣ General\n2️⃣ SC/ST/OBC\n3️⃣ Single Girl Child\n\n"
+                "👉 Type 1, 2, or 3."
+            )
+        else:
+            reply = "⚠️ Please enter a valid class number between 1 and 12."
+
+    # ---------- FEES STEP 3 ----------
+    elif sender in user_context and user_context[sender].get("step") == "ask_fee_category":
+        cls = user_context[sender]["class"]
+
+        if 1 <= cls <= 3:
+            fees = {"general": 500, "sc/st/obc": 300, "single girl child": 350}
+        elif 4 <= cls <= 7:
+            fees = {"general": 800, "sc/st/obc": 600, "single girl child": 650}
+        elif 8 <= cls <= 12:
+            fees = {"general": 1100, "sc/st/obc": 800, "single girl child": 950}
+
+        if "1" in lower_msg or "general" in lower_msg:
+            category = "General"
+            fee = fees["general"]
+        elif "2" in lower_msg or "sc" in lower_msg or "st" in lower_msg or "obc" in lower_msg:
+            category = "SC/ST/OBC"
+            fee = fees["sc/st/obc"]
+        elif "3" in lower_msg or "girl" in lower_msg:
+            category = "Single Girl Child"
+            fee = fees["single girl child"]
+        else:
+            msg = resp.message("⚠️ Please type 1, 2, or 3 to select a valid category.")
+            return make_response(str(resp), 200, {"Content-Type": "application/xml"})
+
+        reply = f"🏫 Fee for *Class {cls}* ({category} category) is *₹{fee}* per term."
+        user_context.pop(sender)
+
+    # ---------- CONTACT INFO ----------
     elif lower_msg in ["3", "contact", "phone", "info"]:
         reply = "*🌐 Website*: https://painavu.kvs.ac.in\n*📧 Email*: kvidukki@yahoo.in\n*📞 Phone*: 04862-232205"
 
+    # ---------- GOODBYE ----------
     elif "bye" in lower_msg:
         reply = "Goodbye! 👋 Have a great day!"
 
+    # ---------- FALLBACK ----------
     else:
         reply = "❓ Sorry, I didn’t understand that. Please choose 1️⃣ Admission 2️⃣ Fees 3️⃣ Contact"
 
-    # ✅ FALLBACK ADDED
     if not reply:
         reply = "⚠️ Bot received message but no condition matched."
 
@@ -184,6 +237,8 @@ def reply_whatsapp():
     msg.body(reply)
     if image_url:
         msg.media(image_url)
+
+    print(f"📤 Replying with: {reply}", flush=True)  # 🔥 ADDED
 
     return make_response(str(resp), 200, {"Content-Type": "application/xml"})
 
